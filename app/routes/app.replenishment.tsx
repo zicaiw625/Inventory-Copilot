@@ -86,9 +86,12 @@ const formatCurrency = (value: number) =>
 export default function Replenishment() {
   const syncFetcher = useFetcher<typeof action>();
   const planFetcher = useFetcher<typeof action>();
-  const { rows, budgetPlan, missingCostCount } = useLoaderData<typeof loader>() as ReplenishmentPayload;
+  const { rows, budgetPlan, missingCostCount, locations, suppliers, safetyDays, leadTimeDays, historyWindowDays, targetCoverageDays } =
+    useLoaderData<typeof loader>() as ReplenishmentPayload;
   const [budget, setBudget] = useState(budgetPlan.budget);
-  const [locationFilter, setLocationFilter] = useState("All");
+  const [locationFilter, setLocationFilter] = useState(
+    locations.find((location) => location.selected)?.id ?? "All",
+  );
   const [supplierFilter, setSupplierFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState<"shortage" | "all" | "low-sales">("shortage");
@@ -111,8 +114,13 @@ export default function Replenishment() {
   );
 
   const filteredRows = useMemo(() => {
+    const selectedLocation = locations.find((location) => location.id === locationFilter);
+
     return rows.filter((row) => {
-      const matchLocation = locationFilter === "All" || row.location.includes(locationFilter);
+      const matchLocation =
+        locationFilter === "All" ||
+        row.location === "All included locations" ||
+        (selectedLocation ? row.location.includes(selectedLocation.name) : false);
       const matchSupplier = supplierFilter === "All" || row.supplier === supplierFilter;
       const matchSearch =
         search.trim().length === 0 ||
@@ -130,7 +138,7 @@ export default function Replenishment() {
 
       return matchLocation && matchSupplier && matchSearch && matchRisk;
     });
-  }, [rows, locationFilter, supplierFilter, search, riskFilter]);
+  }, [rows, locationFilter, supplierFilter, search, riskFilter, locations]);
 
   const sortedRows = useMemo(() => {
     const sorted = [...filteredRows].sort((a, b) => {
@@ -268,9 +276,9 @@ export default function Replenishment() {
               <span className={`${styles.chip} ${styles.chipPrimary}`}>
                 缺货阈值：库存覆盖 ≤ {SHORTAGE_THRESHOLD_DAYS} 天
               </span>
-              <span className={styles.chip}>安全库存：{DEFAULT_SAFETY_DAYS} 天</span>
-              <span className={styles.chip}>默认交期：{DEFAULT_LEAD_TIME_DAYS} 天</span>
-              <span className={styles.chip}>预测窗口：近 30 天销量</span>
+              <span className={styles.chip}>安全库存：{safetyDays} 天</span>
+              <span className={styles.chip}>默认交期：{leadTimeDays} 天</span>
+              <span className={styles.chip}>预测窗口：近 {historyWindowDays} 天销量</span>
               <span className={styles.chip}>只读 Shopify（不创建采购单）</span>
             </div>
           </div>
@@ -316,14 +324,14 @@ export default function Replenishment() {
             </div>
             <div className={styles.summaryMeta}>预算越紧，优先级排序越重要</div>
           </div>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryLabel}>覆盖目标</div>
-            <div className={styles.summaryValue}>
-              {rows[0]?.targetCoverage ?? TARGET_COVERAGE_DAYS} 天
-            </div>
-            <div className={styles.summaryMeta}>目标 = 交期 + 安全库存</div>
-            {syncMessage && <div className={styles.syncNote}>{syncMessage}</div>}
-            {planMessage && <div className={styles.planNote}>{planMessage}</div>}
+            <div className={styles.summaryCard}>
+              <div className={styles.summaryLabel}>覆盖目标</div>
+              <div className={styles.summaryValue}>
+                {targetCoverageDays ?? TARGET_COVERAGE_DAYS} 天
+              </div>
+              <div className={styles.summaryMeta}>目标 = 交期 + 安全库存</div>
+              {syncMessage && <div className={styles.syncNote}>{syncMessage}</div>}
+              {planMessage && <div className={styles.planNote}>{planMessage}</div>}
           </div>
           <div className={styles.summaryCard}>
             <div className={styles.summaryLabel}>缺失成本 SKU</div>
@@ -342,40 +350,43 @@ export default function Replenishment() {
         )}
 
         <div className={styles.filters}>
-          <label className={styles.filter}>
-            Location
-            <select
-              className={styles.select}
-              value={locationFilter}
-              onChange={(event) => {
-                setPage(1);
-                setLocationFilter(event.target.value);
-              }}
-            >
-              <option value="All">All</option>
-              <option value="US">US</option>
-              <option value="EU">EU</option>
-            </select>
-          </label>
-          <label className={styles.filter}>
-            Supplier
+            <label className={styles.filter}>
+              Location
+              <select
+                className={styles.select}
+                value={locationFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setLocationFilter(event.target.value);
+                }}
+              >
+                <option value="All">All</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                    {location.selected ? " (纳入计算)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.filter}>
+              Supplier
             <select
               className={styles.select}
               value={supplierFilter}
               onChange={(event) => {
                 setPage(1);
-                setSupplierFilter(event.target.value);
-              }}
-            >
-              <option value="All">All</option>
-              <option value="Alpha Sports">Alpha Sports</option>
-              <option value="Blue Motion">Blue Motion</option>
-              <option value="Gadget Labs">Gadget Labs</option>
-              <option value="Hydro Made">Hydro Made</option>
-              <option value="EverWool">EverWool</option>
-              <option value="Default supplier">Default supplier</option>
-            </select>
-          </label>
+                  setSupplierFilter(event.target.value);
+                }}
+              >
+                <option value="All">All</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier} value={supplier}>
+                    {supplier}
+                  </option>
+                ))}
+              </select>
+            </label>
           <label className={styles.filter}>
             搜索 SKU / 名称
             <input
@@ -389,13 +400,18 @@ export default function Replenishment() {
               placeholder="输入 SKU 或商品名"
             />
           </label>
-          <label className={styles.filter}>
-            预测窗口
-            <select className={styles.select}>
-              <option>最近 30 天</option>
-              <option>最近 60 天</option>
-            </select>
-          </label>
+            <label className={styles.filter}>
+              预测窗口
+              <select className={styles.select} value={historyWindowDays} readOnly>
+                {[historyWindowDays, 60, 90]
+                  .filter((value, index, self) => self.indexOf(value) === index)
+                  .map((days) => (
+                    <option key={days} value={days}>
+                      最近 {days} 天
+                    </option>
+                  ))}
+              </select>
+            </label>
           <label className={styles.filter}>
             过滤
             <select

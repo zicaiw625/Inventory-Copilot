@@ -46,6 +46,11 @@ export default function Dashboard() {
   const data = useLoaderData<typeof loader>() as DashboardPayload;
   const [timeframe, setTimeframe] = useState<TimeframeKey>("30d");
   const [budget, setBudget] = useState<number>(data.budgetPlan.budget);
+  const [locationFilter, setLocationFilter] = useState(
+    data.locations.find((location) => location.selected)?.id ?? "all",
+  );
+  const [targetCoverage, setTargetCoverage] = useState<number>(data.targetCoverages[0]);
+  const [safetyDays, setSafetyDays] = useState<number>(data.safetyDays);
   const snapshot = data.timeframes[timeframe];
   const syncFetcher = useFetcher<typeof action>();
   const digestFetcher = useFetcher<typeof action>();
@@ -162,41 +167,62 @@ export default function Dashboard() {
 
         <div className={styles.toolbar}>
           <div className={styles.timeframe}>
-                {(["30d", "60d", "90d"] as TimeframeKey[]).map((key) => (
-                  <button
-                    key={key}
-                    className={`${styles.timeframeButton} ${timeframe === key ? styles.timeframeActive : ""}`}
-                    onClick={() => setTimeframe(key)}
-                    type="button"
-                  >
-                    {key === "30d" && "近 30 天"}
-                    {key === "60d" && "近 60 天"}
-                    {key === "90d" && "近 90 天"}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.filterRow}>
-                <label className={styles.filterLabel}>
+            {["30d", "60d", "90d"].map((key) => (
+              <button
+                key={key}
+                className={`${styles.timeframeButton} ${timeframe === key ? styles.timeframeActive : ""}`}
+                onClick={() => setTimeframe(key as TimeframeKey)}
+                type="button"
+              >
+                {key === "30d" && "近 30 天"}
+                {key === "60d" && "近 60 天"}
+                {key === "90d" && "近 90 天"}
+              </button>
+            ))}
+          </div>
+          <div className={styles.filterRow}>
+            <label className={styles.filterLabel}>
               Location
-              <select className={styles.select}>
-                <option>All included locations</option>
-                <option>US East (primary)</option>
-                <option>EU Fulfillment</option>
+              <select
+                className={styles.select}
+                value={locationFilter}
+                onChange={(event) => setLocationFilter(event.target.value)}
+              >
+                <option value="all">All included locations</option>
+                {data.locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                    {location.selected ? " (纳入计算)" : ""}
+                  </option>
+                ))}
               </select>
             </label>
             <label className={styles.filterLabel}>
               补货目标覆盖天数
-              <select className={styles.select}>
-                <option>30 天 (默认)</option>
-                <option>45 天</option>
-                <option>60 天</option>
+              <select
+                className={styles.select}
+                value={targetCoverage}
+                onChange={(event) => setTargetCoverage(Number(event.target.value))}
+              >
+                {data.targetCoverages.map((days) => (
+                  <option key={days} value={days}>
+                    {days} 天
+                  </option>
+                ))}
               </select>
             </label>
             <label className={styles.filterLabel}>
               安全库存天数
-              <select className={styles.select}>
-                <option>7 天</option>
-                <option>10 天</option>
+              <select
+                className={styles.select}
+                value={safetyDays}
+                onChange={(event) => setSafetyDays(Number(event.target.value))}
+              >
+                {[data.safetyDays, data.safetyDays + 3, data.safetyDays + 7].map((days) => (
+                  <option key={days} value={days}>
+                    {days} 天
+                  </option>
+                ))}
               </select>
             </label>
           </div>
