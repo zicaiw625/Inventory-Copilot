@@ -87,6 +87,11 @@ export type DashboardPayload = {
   missingCostCount: number;
   lastCalculated: string;
   budgetPlan: BudgetPlan;
+  locations: { id: string; name: string; selected: boolean }[];
+  targetCoverages: number[];
+  safetyDays: number;
+  leadTimeDays: number;
+  historyWindowDays: number;
 };
 
 export type ReplenishmentRow = {
@@ -108,6 +113,12 @@ export type ReplenishmentPayload = {
   rows: ReplenishmentRow[];
   budgetPlan: BudgetPlan;
   missingCostCount: number;
+  locations: { id: string; name: string; selected: boolean }[];
+  suppliers: string[];
+  safetyDays: number;
+  leadTimeDays: number;
+  historyWindowDays: number;
+  targetCoverageDays: number;
 };
 
 export type OverstockRow = {
@@ -224,6 +235,8 @@ export async function getDashboardData(
     "90d": buildTimeframe(variants, "90d"),
   };
 
+  const locations = await buildDashboardLocations(admin);
+
   const shortageCandidates = rows30d.filter(
     (row) => row.daysOfStock <= SHORTAGE_THRESHOLD || row.recommendedQty >= 5,
   );
@@ -246,6 +259,11 @@ export async function getDashboardData(
       status: "ok",
     },
     lastCalculated: "今天 07:45",
+    locations,
+    targetCoverages: [TARGET_COVERAGE, 45, 60],
+    safetyDays: SAFETY_DAYS,
+    leadTimeDays: DEFAULT_LEAD_TIME_DAYS,
+    historyWindowDays: 30,
   };
 }
 
@@ -256,6 +274,16 @@ export async function getReplenishmentData(
   const variants = await getVariantMetrics(admin, shopDomain);
   const missingCostCount = variants.filter((variant) => !variant.unitCost || variant.unitCost === 0).length;
   const metrics30d = buildRowsForTimeframe(variants, "30d");
+  const locations = await buildDashboardLocations(admin);
+  const primaryLocation = locations.find((location) => location.selected) ?? locations[0];
+  const suppliers = [
+    "Default supplier",
+    "Alpha Sports",
+    "Blue Motion",
+    "Gadget Labs",
+    "Hydro Made",
+    "EverWool",
+  ];
 
   const rows = metrics30d
     .map((metric) => {
@@ -269,7 +297,7 @@ export async function getReplenishmentData(
         sku: metric.sku,
         name: metric.name,
         variant: metric.variant,
-        location: "All included locations",
+        location: primaryLocation?.name ?? "All included locations",
         available: metric.available,
         avgDailySales: metric.avgDailySales,
         daysOfStock: metric.daysOfStock,
@@ -288,7 +316,17 @@ export async function getReplenishmentData(
 
   const budgetPlan = buildBudgetPlan(shortageCandidates);
 
-  return { rows, budgetPlan, missingCostCount };
+  return {
+    rows,
+    budgetPlan,
+    missingCostCount,
+    locations,
+    suppliers,
+    safetyDays: SAFETY_DAYS,
+    leadTimeDays: DEFAULT_LEAD_TIME_DAYS,
+    historyWindowDays: 30,
+    targetCoverageDays: TARGET_COVERAGE,
+  };
 }
 
 export async function getOverstockData(
@@ -870,6 +908,26 @@ function buildReminders(
   ];
 
   return { reminders, missingCostCount: costMissing };
+}
+
+async function buildDashboardLocations(admin: AdminApiClient) {
+  try {
+    const locations = await fetchLocations(admin);
+    if (locations.length > 0) {
+      return locations.map((location, index) => ({
+        ...location,
+        selected: index < 2,
+      }));
+    }
+  } catch (error) {
+    console.error("Failed to fetch locations for dashboard", error);
+  }
+
+  return [
+    { id: "us-east", name: "US East (primary)", selected: true },
+    { id: "eu-fulfillment", name: "EU Fulfillment", selected: true },
+    { id: "pop-up", name: "Pop-up Store", selected: false },
+  ];
 }
 
 function computeCoverage(available: number, avgDailySales: number): number {
