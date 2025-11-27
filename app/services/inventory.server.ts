@@ -206,6 +206,7 @@ type VariantMetrics = VariantInventory & {
 const SHORTAGE_THRESHOLD = 10;
 const OVERSTOCK_THRESHOLD = 60;
 const MIN_SALES_FOR_FORECAST = 10;
+const MIN_RECOMMENDED_QTY = 5;
 const DEFAULT_LEAD_TIME_DAYS = 14;
 const SAFETY_DAYS = 7;
 const TARGET_COVERAGE = Math.max(DEFAULT_LEAD_TIME_DAYS + SAFETY_DAYS, 30);
@@ -216,7 +217,6 @@ export async function getDashboardData(
   shopDomain: string,
 ): Promise<DashboardPayload> {
   const variants = await getVariantMetrics(admin, shopDomain);
-  const rows30d = buildRowsForTimeframe(variants, "30d");
   const timeframes: Record<TimeframeKey, DashboardTimeframe> = {
     "30d": buildTimeframe(variants, "30d"),
     "60d": buildTimeframe(variants, "60d"),
@@ -714,7 +714,7 @@ function buildTimeframe(
   const shortage = rows
     .filter(
       (row) =>
-        row.daysOfStock <= SHORTAGE_THRESHOLD || row.recommendedQty >= 5,
+        row.daysOfStock <= SHORTAGE_THRESHOLD || row.recommendedQty >= MIN_RECOMMENDED_QTY,
     )
     .sort((a, b) => a.daysOfStock - b.daysOfStock)
     .slice(0, 5);
@@ -723,6 +723,8 @@ function buildTimeframe(
     .filter((row) => (row.coverageDays ?? 0) >= OVERSTOCK_THRESHOLD)
     .sort((a, b) => (b.stockValue ?? 0) - (a.stockValue ?? 0))
     .slice(0, 5);
+
+  const days = timeframe === "30d" ? 30 : timeframe === "60d" ? 60 : 90;
 
   const kpis: KPICard[] = [
     {
