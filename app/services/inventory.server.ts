@@ -217,6 +217,7 @@ export async function getDashboardData(
   shopDomain: string,
 ): Promise<DashboardPayload> {
   const variants = await getVariantMetrics(admin, shopDomain);
+  const rows30d = buildRowsForTimeframe(variants, "30d");
   const timeframes: Record<TimeframeKey, DashboardTimeframe> = {
     "30d": buildTimeframe(variants, "30d"),
     "60d": buildTimeframe(variants, "60d"),

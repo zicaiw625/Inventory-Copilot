@@ -295,13 +295,13 @@ export default function Replenishment() {
         </div>
 
         <div className={styles.summaryRow}>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryLabel}>待补货 SKU</div>
-            <div className={styles.summaryValue}>{rows.filter((row) => row.recommendedQty > 0).length}</div>
-            <div className={styles.summaryMeta}>
-              过滤覆盖 ≤ {SHORTAGE_THRESHOLD_DAYS} 天 · 推荐数量 > 0
+            <div className={styles.summaryCard}>
+              <div className={styles.summaryLabel}>待补货 SKU</div>
+              <div className={styles.summaryValue}>{rows.filter((row) => row.recommendedQty > 0).length}</div>
+              <div className={styles.summaryMeta}>
+                过滤覆盖 ≤ {SHORTAGE_THRESHOLD_DAYS} 天 · 推荐数量 &gt; 0
+              </div>
             </div>
-          </div>
           <div className={styles.summaryCard}>
             <div className={styles.summaryLabel}>本次采购预算</div>
             <div className={styles.budgetInputWrap}>
@@ -482,57 +482,58 @@ export default function Replenishment() {
                 </tr>
               </thead>
               <tbody>
-                {!isSyncing && hasRows &&
+                {!isSyncing &&
+                  hasRows &&
                   pageRows.map((row) => {
                     const amount = row.recommendedQty * row.unitCost;
                     const isCritical = row.daysOfStock <= 7;
                     const isWarning = row.daysOfStock > 7 && row.daysOfStock <= 10;
                     const severityClass = isCritical ? styles.badgeDanger : isWarning ? styles.badgeWarning : styles.badgeInfo;
 
-                  const lowSales = row.avgDailySales * 30 < MIN_SALES_FOR_FORECAST;
-                  const note = row.note || (lowSales ? "销量不足以预测" : "");
+                    const lowSales = row.avgDailySales * 30 < MIN_SALES_FOR_FORECAST;
+                    const note = row.note || (lowSales ? "销量不足以预测" : "");
 
-                  return (
-                    <tr key={row.sku}>
-                      <td>
-                        <input
-                          aria-label={`Select ${row.sku}`}
-                          type="checkbox"
-                          checked={selectedSkus.includes(row.sku)}
-                          onChange={() => toggleSku(row.sku)}
-                        />
-                      </td>
-                      <td>
-                        <div className={styles.productCell}>
-                          <div className={styles.thumb} />
-                          <div>
-                            <div className={styles.productName}>
-                              <a className={styles.link} href={`/app/variant/${encodeURIComponent(row.sku)}`}>
-                                {row.name}
-                              </a>
+                    return (
+                      <tr key={row.sku}>
+                        <td>
+                          <input
+                            aria-label={`Select ${row.sku}`}
+                            type="checkbox"
+                            checked={selectedSkus.includes(row.sku)}
+                            onChange={() => toggleSku(row.sku)}
+                          />
+                        </td>
+                        <td>
+                          <div className={styles.productCell}>
+                            <div className={styles.thumb} />
+                            <div>
+                              <div className={styles.productName}>
+                                <a className={styles.link} href={`/app/variant/${encodeURIComponent(row.sku)}`}>
+                                  {row.name}
+                                </a>
+                              </div>
+                              <div className={styles.productMeta}>{row.variant}</div>
                             </div>
-                            <div className={styles.productMeta}>{row.variant}</div>
                           </div>
-                        </div>
-                      </td>
-                      <td className={styles.sku}>{row.sku}</td>
-                      <td>{row.location}</td>
-                      <td>{row.available}</td>
-                      <td>{row.avgDailySales.toFixed(1)}</td>
-                      <td>
-                        <span className={`${styles.badge} ${severityClass}`}>{row.daysOfStock} 天</span>
-                      </td>
-                      <td className={styles.emphasis}>{row.recommendedQty}</td>
-                      <td>{row.targetCoverage} 天</td>
-                      <td>{formatCurrency(row.unitCost)}</td>
-                      <td className={styles.emphasis}>{formatCurrency(amount)}</td>
-                      <td>{row.supplier}</td>
-                      <td className={styles.note}>
-                        {note ? <span className={styles.noteBadge}>{note}</span> : "-"}
-                      </td>
-                    </tr>
-                  );
-                }
+                        </td>
+                        <td className={styles.sku}>{row.sku}</td>
+                        <td>{row.location}</td>
+                        <td>{row.available}</td>
+                        <td>{row.avgDailySales.toFixed(1)}</td>
+                        <td>
+                          <span className={`${styles.badge} ${severityClass}`}>{row.daysOfStock} 天</span>
+                        </td>
+                        <td className={styles.emphasis}>{row.recommendedQty}</td>
+                        <td>{row.targetCoverage} 天</td>
+                        <td>{formatCurrency(row.unitCost)}</td>
+                        <td className={styles.emphasis}>{formatCurrency(amount)}</td>
+                        <td>{row.supplier}</td>
+                        <td className={styles.note}>
+                          {note ? <span className={styles.noteBadge}>{note}</span> : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 {isSyncing &&
                   Array.from({ length: 5 }).map((_, index) => (
                     <tr key={`skeleton-${index}`} className={styles.skeletonRow}>
