@@ -432,7 +432,7 @@ export default function Overstock() {
               <div>
                 <div className={styles.thresholdLabel}>覆盖天数上限</div>
                 <div className={styles.thresholdValue}>90 天</div>
-                <div className={styles.thresholdMeta}>> 90 天 标记严重压货</div>
+                <div className={styles.thresholdMeta}>&gt; 90 天 标记严重压货</div>
               </div>
               <div>
                 <div className={styles.thresholdLabel}>销量为 0</div>
