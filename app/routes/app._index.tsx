@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -11,6 +11,7 @@ import { authenticate } from "../shopify.server";
 import {
   getDashboardData,
   logSyncEvent,
+  type DashboardRow,
   type DashboardPayload,
   type TimeframeKey,
 } from "../services/inventory.server";
@@ -54,16 +55,13 @@ export default function Dashboard() {
   const snapshot = data.timeframes[timeframe];
   const syncFetcher = useFetcher<typeof action>();
   const digestFetcher = useFetcher<typeof action>();
+  const liveBudgetPlan = useMemo(
+    () => buildBudgetPlanFromRows(data.recommendationPool, budget, targetCoverage),
+    [budget, data.recommendationPool, targetCoverage],
+  );
 
-  const formatCurrency = (value?: number) =>
-    (value ?? 0).toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    });
-
-  const coveragePct = Math.round((data.budgetPlan.coverageShare ?? 0) * 100);
-  const budgetGap = budget - data.budgetPlan.usedAmount;
+  const coveragePct = Math.round((liveBudgetPlan.coverageShare ?? 0) * 100);
+  const budgetGap = budget - liveBudgetPlan.usedAmount;
 
   return (
     <s-page className={styles.page}>
@@ -339,7 +337,9 @@ export default function Dashboard() {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardTitle}>预算版采购清单</div>
-              <span className={`${styles.chip} ${styles.chipInfo}`}>目标覆盖 {data.budgetPlan.coverageDays} 天</span>
+              <span className={`${styles.chip} ${styles.chipInfo}`}>
+                目标覆盖 {liveBudgetPlan.coverageDays} 天
+              </span>
             </div>
             <p className={styles.cardSubtitle}>
               输入预算后，按缺货风险 × 重要度自动排序；使用补货页可进一步微调。
@@ -383,7 +383,7 @@ export default function Dashboard() {
               </s-button>
             </div>
             <ul className={styles.planList}>
-              {data.budgetPlan.picks.map((pick) => (
+              {liveBudgetPlan.picks.map((pick) => (
                 <li key={pick.sku}>
                   <div>
                     <div className={styles.planName}>{pick.name}</div>
@@ -400,7 +400,7 @@ export default function Dashboard() {
             </ul>
             <div className={styles.planFooter}>
               <div>
-                被排除的 SKU：{data.budgetPlan.excludedCount} 个（合计金额 {data.budgetPlan.excludedValue}，可手动加入）
+                被排除的 SKU：{liveBudgetPlan.excludedCount} 个（合计金额 {liveBudgetPlan.excludedValue}，可手动加入）
               </div>
               <s-button size="slim" variant="tertiary">
                 调整预算与优先级
@@ -499,3 +499,72 @@ export default function Dashboard() {
 export const headers: HeadersFunction = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
+
+function formatCurrency(value?: number): string {
+  return (value ?? 0).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
+function buildBudgetPlanFromRows(
+  rows: DashboardRow[],
+  budget: number,
+  targetCoverage: number,
+): DashboardPayload["budgetPlan"] {
+  const candidates = rows
+    .filter((row) => row.recommendedQty > 0)
+    .map((row) => {
+      const unitCost =
+        row.unitCost ??
+        (row.stockValue && row.available > 0 ? row.stockValue / row.available : undefined) ??
+        0;
+      const spend = row.recommendedQty * unitCost;
+      const riskScore = row.daysOfStock > 0 ? 1 / row.daysOfStock : 2;
+      const importance =
+        row.salesValue ??
+        (row.sales
+          ? row.sales * Math.max(unitCost, 1)
+          : row.avgDailySales * 30 * Math.max(unitCost, 1));
+      const score = riskScore * (importance || 1);
+      return { row, unitCost, spend, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  let used = 0;
+  const picks: DashboardPayload["budgetPlan"]["picks"] = [];
+
+  candidates.forEach(({ row, spend }) => {
+    if (spend <= 0) return;
+    if (used + spend <= budget || picks.length === 0) {
+      used += spend;
+      picks.push({
+        sku: row.sku,
+        name: row.name,
+        qty: row.recommendedQty,
+        amount: formatCurrency(spend),
+        risk: row.daysOfStock <= 10 ? "爆款防断货" : "库存紧张",
+      });
+    }
+  });
+
+  const pickedSkus = new Set(picks.map((pick) => pick.sku));
+  const excludedAmount = candidates
+    .filter(({ row }) => !pickedSkus.has(row.sku))
+    .reduce((total, item) => total + item.spend, 0);
+  const excludedCount = Math.max(candidates.length - picks.length, 0);
+  const totalPool = used + excludedAmount || budget;
+  const coverageShare = totalPool > 0 ? Math.min(1, used / totalPool) : 0;
+
+  return {
+    budget,
+    coverageDays: targetCoverage,
+    usedAmount: used,
+    excludedAmount,
+    coverageShare,
+    picks,
+    excludedValue: formatCurrency(Math.abs(excludedAmount)),
+    excludedCount,
+  };
+}

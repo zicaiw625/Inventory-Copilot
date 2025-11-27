@@ -49,6 +49,7 @@ export type DashboardTimeframe = {
   kpis: KPICard[];
   shortage: DashboardRow[];
   overstock: DashboardRow[];
+  rows: DashboardRow[];
 };
 
 export type BudgetPlan = {
@@ -73,6 +74,7 @@ export type Reminders = { title: string; action: string; tone: "warning" | "neut
 
 export type DashboardPayload = {
   timeframes: Record<TimeframeKey, DashboardTimeframe>;
+  recommendationPool: DashboardRow[];
   digest: {
     window: string;
     cadence: string;
@@ -228,11 +230,17 @@ export async function getDashboardData(
   shopDomain: string,
 ): Promise<DashboardPayload> {
   const variants = await getVariantMetrics(admin, shopDomain);
-  const rows30d = buildRowsForTimeframe(variants, "30d");
+  const rowsByTimeframe: Record<TimeframeKey, DashboardRow[]> = {
+    "30d": buildRowsForTimeframe(variants, "30d"),
+    "60d": buildRowsForTimeframe(variants, "60d"),
+    "90d": buildRowsForTimeframe(variants, "90d"),
+  };
+
+  const rows30d = rowsByTimeframe["30d"];
   const timeframes: Record<TimeframeKey, DashboardTimeframe> = {
-    "30d": buildTimeframe(variants, "30d"),
-    "60d": buildTimeframe(variants, "60d"),
-    "90d": buildTimeframe(variants, "90d"),
+    "30d": buildTimeframe(rowsByTimeframe["30d"], "30d"),
+    "60d": buildTimeframe(rowsByTimeframe["60d"], "60d"),
+    "90d": buildTimeframe(rowsByTimeframe["90d"], "90d"),
   };
 
   const locations = await buildDashboardLocations(admin);
@@ -264,6 +272,7 @@ export async function getDashboardData(
     safetyDays: SAFETY_DAYS,
     leadTimeDays: DEFAULT_LEAD_TIME_DAYS,
     historyWindowDays: 30,
+    recommendationPool: rows30d,
   };
 }
 
@@ -688,7 +697,8 @@ export async function getDigestPreview(
   shopDomain: string,
 ): Promise<DigestPreview> {
   const variants = await getVariantMetrics(admin, shopDomain);
-  const timeframe = buildTimeframe(variants, "30d");
+  const rows30d = buildRowsForTimeframe(variants, "30d");
+  const timeframe = buildTimeframe(rows30d, "30d");
   return {
     title: "[Inventory Copilot] 每周库存雷达 – 缺货风险 & 压货清单",
     summary: {
@@ -744,12 +754,7 @@ function getSampleVariantDetail(): VariantDetail {
   };
 }
 
-function buildTimeframe(
-  variants: VariantMetrics[],
-  timeframe: TimeframeKey,
-): DashboardTimeframe {
-  const rows = buildRowsForTimeframe(variants, timeframe);
-
+function buildTimeframe(rows: DashboardRow[], timeframe: TimeframeKey): DashboardTimeframe {
   const shortage = rows
     .filter(
       (row) =>
@@ -790,7 +795,7 @@ function buildTimeframe(
     },
   ];
 
-  return { kpis, shortage, overstock };
+  return { kpis, shortage, overstock, rows };
 }
 
 function buildRowsForTimeframe(
