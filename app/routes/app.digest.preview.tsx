@@ -2,11 +2,10 @@ import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "re
 import { json, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
+import { DEFAULT_SHORTAGE_THRESHOLD_DAYS } from "../config/inventory";
 import { authenticate } from "../shopify.server";
-import {
-  getDigestPreview,
-  type DigestPreview,
-} from "../services/inventory.server";
+import { getDigestPreview } from "../services/inventory.digest.server";
+import type { DigestPreview } from "../services/inventory.types";
 import styles from "./app.digest.preview.module.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -25,7 +24,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function DigestPreview() {
-  const digest = useLoaderData<typeof loader>() as DigestPreview;
+  const digest = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
 
   return (
@@ -77,7 +76,9 @@ export default function DigestPreview() {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardTitle}>缺货风险 Top 5</div>
-              <span className={`${styles.chip} ${styles.chipWarning}`}>按覆盖天数 ≤ 10 天</span>
+              <span className={`${styles.chip} ${styles.chipWarning}`}>
+                按覆盖天数 ≤ {DEFAULT_SHORTAGE_THRESHOLD_DAYS} 天
+              </span>
             </div>
             <table className={styles.table}>
               <thead>

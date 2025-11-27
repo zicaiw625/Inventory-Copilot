@@ -61,3 +61,23 @@ model SyncLog {
 
   @@index([shopDomain, createdAt])
 }
+
+model ShopSetting {
+  id                        String   @id @default(cuid())
+  shopDomain                String   @unique
+  shortageThreshold         Int
+  overstockThreshold        Int
+  mildOverstockThreshold    Int
+  safetyDays                Int
+  leadTime                  Int
+  historyWindow             String
+  digestFrequency           String
+  digestDailyEnabled        Boolean  @default(false)
+  digestWeeklyEnabled       Boolean  @default(true)
+  digestSendHour            Int      @default(9)
+  emailRecipients           String
+  slackWebhook              String
+  slackEnabled              Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}

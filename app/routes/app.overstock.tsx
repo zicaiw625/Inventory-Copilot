@@ -8,17 +8,20 @@ import { json, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { authenticate } from "../shopify.server";
-import {
-  getOverstockData,
-  logSyncEvent,
-  type OverstockPayload,
-  type OverstockRow,
-} from "../services/inventory.server";
+import { DEFAULT_MILD_OVERSTOCK_THRESHOLD_DAYS, DEFAULT_OVERSTOCK_THRESHOLD_DAYS } from "../config/inventory";
+import { readSettings } from "../services/inventory.settings.server";
+import { getOverstockData } from "../services/inventory.overstock.server";
+import { logSyncEvent } from "../services/inventory.sync.server";
+import type { OverstockPayload, OverstockRow } from "../services/inventory.types";
 import styles from "./app.overstock.module.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
-  return getOverstockData(admin, session.shop);
+  const settings = await readSettings(session.shop);
+  return getOverstockData(admin, session.shop, {
+    overstockThresholdDays: settings?.overstockThreshold,
+    mildOverstockThresholdDays: settings?.mildOverstockThreshold,
+  });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -61,14 +64,26 @@ const severityText: Record<OverstockRow["severity"], string> = {
   normal: "正常",
 };
 
-const discountText = (row: OverstockRow) => {
-  if (row.severity === "severe" || row.coverageDays >= 120) return "15% - 25%";
-  if (row.severity === "mild" || row.coverageDays >= 90) return "10% - 15%";
+const DEFAULT_MILD = DEFAULT_MILD_OVERSTOCK_THRESHOLD_DAYS;
+const DEFAULT_SEVERE = DEFAULT_OVERSTOCK_THRESHOLD_DAYS;
+
+const discountText = (row: OverstockRow, severeThreshold: number, mildThreshold: number) => {
+  if (row.severity === "severe" || row.coverageDays >= severeThreshold) {
+    return "15% - 25%";
+  }
+  if (
+    row.severity === "mild" ||
+    row.coverageDays >= mildThreshold
+  ) {
+    return "10% - 15%";
+  }
   return "-";
 };
 
 export default function Overstock() {
-  const { rows, summary } = useLoaderData<typeof loader>() as OverstockPayload;
+  const { rows, summary, overstockThresholdDays, mildOverstockThresholdDays } = useLoaderData<typeof loader>();
+  const SEVERE_THRESHOLD = overstockThresholdDays ?? DEFAULT_SEVERE;
+  const MILD_THRESHOLD = mildOverstockThresholdDays ?? DEFAULT_MILD;
   const syncFetcher = useFetcher<typeof action>();
   const [filter, setFilter] = useState<OverstockRow["severity"] | "all">("severe");
   const [sortKey, setSortKey] = useState<"coverageDays" | "stockValue" | "lastReplenishedDays">(
@@ -139,14 +154,13 @@ export default function Overstock() {
     lines.push("清货候选 SKU（含折扣建议）");
     source.forEach((row) => {
       lines.push(
-        `- ${row.sku} ${row.name} · ${row.variant} | 覆盖 ${row.coverageDays} 天 | 占用 ${formatCurrency(row.stockValue)} | 建议折扣 ${discountText(row)}${row.unitCost ? "" : " · 未填成本"}`,
+        `- ${row.sku} ${row.name} · ${row.variant} | 覆盖 ${row.coverageDays} 天 | 占用 ${formatCurrency(row.stockValue)} | 建议折扣 ${discountText(row, SEVERE_THRESHOLD, MILD_THRESHOLD)}${row.unitCost ? "" : " · 未填成本"}`,
       );
     });
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
       setCopyStatus("已复制促销方案");
     } catch (error) {
-      console.error("copy failed", error);
       setCopyStatus("复制失败，请手动选择文本");
     }
   };
@@ -160,10 +174,10 @@ export default function Overstock() {
           <div>
             <h1 className={styles.heading}>压货 / 滞销雷达</h1>
             <p className={styles.subheading}>
-              捕捉覆盖天数过高的 SKU，按占用金额排序，给出清货建议。库存覆盖 ≥ 90 天 或 30 天销量为 0 会被标记为严重滞销。
+              捕捉覆盖天数过高的 SKU，按占用金额排序，给出清货建议。库存覆盖 ≥ {SEVERE_THRESHOLD} 天 或 30 天销量为 0 会被标记为严重滞销。
             </p>
             <div className={styles.headerBadges}>
-              <span className={styles.badge}>覆盖天数阈值：60 / 90 天</span>
+              <span className={styles.badge}>覆盖天数阈值：{MILD_THRESHOLD} / {SEVERE_THRESHOLD} 天</span>
               <span className={styles.badge}>销量窗口：30 天</span>
               <span className={styles.badge}>只读 Shopify 库存</span>
               <span className={styles.badge}>建议折扣 10% - 25%（视毛利）</span>
@@ -192,12 +206,16 @@ export default function Overstock() {
           <div className={styles.summaryCard}>
             <div className={styles.summaryLabel}>压货 SKU</div>
             <div className={styles.summaryValue}>{summary.overstockCount}</div>
-            <div className={styles.summaryMeta}>覆盖 ≥ 60 天 · 过去 30 天有销量</div>
+            <div className={styles.summaryMeta}>
+              覆盖 ≥ {SEVERE_THRESHOLD} 天 · 过去 30 天有销量
+            </div>
           </div>
           <div className={styles.summaryCard}>
             <div className={styles.summaryLabel}>严重滞销</div>
             <div className={styles.summaryValue}>{summary.severeCount}</div>
-            <div className={styles.summaryMeta}>销量为 0 或覆盖 ≥ 120 天</div>
+            <div className={styles.summaryMeta}>
+              销量为 0 或覆盖 ≥ {SEVERE_THRESHOLD} 天
+            </div>
           </div>
           <div className={styles.summaryCard}>
             <div className={styles.summaryLabel}>占用金额</div>
@@ -329,7 +347,7 @@ export default function Overstock() {
                         {!row.unitCost && <span className={styles.missingCost}>未填成本</span>}
                       </td>
                       <td>{row.lastReplenished}</td>
-                      <td>{discountText(row)}</td>
+                      <td>{discountText(row, SEVERE_THRESHOLD, MILD_THRESHOLD)}</td>
                       <td>
                         <span
                           className={`${styles.severityBadge} ${
@@ -406,11 +424,11 @@ export default function Overstock() {
             <ul className={styles.actionList}>
               <li>
                 <span className={styles.dot} />
-                严重滞销（覆盖 ≥ 120 天）：建议折扣 15% - 25%，或与 A 类爆款捆绑。
+                严重滞销（覆盖 ≥ {SEVERE_THRESHOLD} 天）：建议折扣 15% - 25%，或与 A 类爆款捆绑。
               </li>
               <li>
                 <span className={styles.dot} />
-                轻微过量（覆盖 60-90 天）：放缓补货，同时在主页做轻提醒。
+                轻微过量（覆盖 {MILD_THRESHOLD}-{SEVERE_THRESHOLD} 天）：放缓补货，同时在主页做轻提醒。
               </li>
               <li>
                 <span className={styles.dot} />
@@ -426,17 +444,17 @@ export default function Overstock() {
             {copyStatus && <div className={styles.copyStatus}>{copyStatus}</div>}
           </div>
 
-          <div className={styles.actionCard}>
-            <div className={styles.actionTitle}>监控阈值</div>
-            <div className={styles.thresholdBox}>
-              <div>
-                <div className={styles.thresholdLabel}>覆盖天数上限</div>
-                <div className={styles.thresholdValue}>90 天</div>
-                <div className={styles.thresholdMeta}>&gt; 90 天 标记严重压货</div>
-              </div>
-              <div>
-                <div className={styles.thresholdLabel}>销量为 0</div>
-                <div className={styles.thresholdValue}>近 30 天</div>
+            <div className={styles.actionCard}>
+              <div className={styles.actionTitle}>监控阈值</div>
+              <div className={styles.thresholdBox}>
+                <div>
+                  <div className={styles.thresholdLabel}>覆盖天数上限</div>
+                  <div className={styles.thresholdValue}>{SEVERE_THRESHOLD} 天</div>
+                  <div className={styles.thresholdMeta}>&gt; {SEVERE_THRESHOLD} 天 标记严重压货</div>
+                </div>
+                <div>
+                  <div className={styles.thresholdLabel}>销量为 0</div>
+                  <div className={styles.thresholdValue}>近 30 天</div>
                 <div className={styles.thresholdMeta}>销量为 0 的现货 SKU 直接标记</div>
               </div>
             </div>
@@ -483,7 +501,7 @@ function toCsv(rows: OverstockPayload["rows"]) {
       row.coverageDays,
       row.stockValue,
       row.lastReplenished,
-      discountText(row),
+      discountText(row, SEVERE_THRESHOLD, MILD_THRESHOLD),
       severityText[row.severity],
     ]
       .map((value) => `"${String(value).replace(/"/g, '""')}"`)

@@ -8,12 +8,20 @@ import { json, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { authenticate } from "../shopify.server";
-import {
-  getSettingsData,
-  logSyncEvent,
-  type SettingsPayload,
-} from "../services/inventory.server";
+import { getSettingsData, saveSettings } from "../services/inventory.settings.server";
+import { logSyncEvent } from "../services/inventory.sync.server";
+import type { SettingsPayload } from "../services/inventory.types";
+import type { FieldErrors } from "../types/errors";
+import { parseSettings, type SettingsField, type SettingsForm } from "../validation/settings";
 import styles from "./app.settings.module.css";
+
+type SettingsActionResponse = {
+  ok: boolean;
+  message?: string;
+  errors?: FieldErrors<SettingsField>;
+  savedAt?: string;
+  data?: SettingsForm;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -24,89 +32,75 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const data = await request.formData();
 
-  const shortageThreshold = Number(data.get("shortageThreshold"));
-  const overstockThreshold = Number(data.get("overstockThreshold"));
-  const safetyDays = Number(data.get("safetyDays"));
-  const leadTime = Number(data.get("leadTime"));
-  const historyWindow = (data.get("historyWindow") as string) || "30 天";
-  const digestFrequency = (data.get("digestFrequency") as string) || "weekly";
-  const emailRecipients = (data.get("emailRecipients") as string) || "";
-  const slackWebhook = (data.get("slackWebhook") as string) || "";
-  const slackEnabled = data.get("slackEnabled") === "true";
-  const locationsRaw = (data.get("locations") as string) || "[]";
-
-  const errors: Record<string, string> = {};
-  if (!Number.isFinite(shortageThreshold) || shortageThreshold <= 0) {
-    errors.shortageThreshold = "缺货阈值需大于 0";
-  }
-  if (!Number.isFinite(overstockThreshold) || overstockThreshold <= 0) {
-    errors.overstockThreshold = "过量阈值需大于 0";
-  }
-  if (!Number.isFinite(safetyDays) || safetyDays < 0) {
-    errors.safetyDays = "安全库存需为非负数";
-  }
-  if (!Number.isFinite(leadTime) || leadTime < 0) {
-    errors.leadTime = "交期需为非负数";
-  }
-
-  let locations: { id: string; selected: boolean }[] = [];
-  try {
-    locations = JSON.parse(locationsRaw);
-  } catch (error) {
-    errors.locations = "Locations 解析失败";
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return json({ ok: false, errors }, { status: 400 });
+  const parsed = parseSettings(data);
+  if (!parsed.success) {
+    return json<SettingsActionResponse>({ ok: false, errors: parsed.errors }, { status: 400 });
   }
 
   await logSyncEvent(
     session.shop,
     "sync-replenishment",
     "success",
-    `更新设置：阈值 ${shortageThreshold}/${overstockThreshold}，交期 ${leadTime}`,
+    `更新设置：阈值 ${parsed.data.shortageThreshold}/${parsed.data.overstockThreshold}，交期 ${parsed.data.leadTime}`,
   );
 
-  return json({
+  await saveSettings(session.shop, parsed.data);
+
+  return json<SettingsActionResponse>({
     ok: true,
     message: "设置已保存，将在夜间任务和 webhook 增量中生效",
     savedAt: new Date().toISOString(),
-    locations,
-    historyWindow,
-    digestFrequency,
-    emailRecipients,
-    slackWebhook,
-    slackEnabled,
-    shortageThreshold,
-    overstockThreshold,
-    safetyDays,
-    leadTime,
+    data: parsed.data,
   });
 };
 
 export default function Settings() {
-  const initial = useLoaderData<typeof loader>() as SettingsPayload;
+  const initial = useLoaderData<typeof loader>();
   const saveFetcher = useFetcher<typeof action>();
 
   const [locations, setLocations] = useState(initial.locations);
   const [historyWindow, setHistoryWindow] = useState(initial.historyWindow);
   const [shortageThreshold, setShortageThreshold] = useState(initial.shortageThreshold);
   const [overstockThreshold, setOverstockThreshold] = useState(initial.overstockThreshold);
+  const [mildOverstockThreshold, setMildOverstockThreshold] = useState(initial.mildOverstockThreshold);
   const [safetyDays, setSafetyDays] = useState(initial.safetyDays);
   const [leadTime, setLeadTime] = useState(initial.leadTime);
   const [digestFrequency, setDigestFrequency] = useState(initial.digestFrequency);
+  const [digestSendHour, setDigestSendHour] = useState(initial.digestSendHour);
+  const [digestDailyEnabled, setDigestDailyEnabled] = useState(initial.digestDailyEnabled);
+  const [digestWeeklyEnabled, setDigestWeeklyEnabled] = useState(initial.digestWeeklyEnabled);
   const [emailRecipients, setEmailRecipients] = useState(initial.emailRecipients);
   const [slackWebhook, setSlackWebhook] = useState(initial.slackWebhook);
   const [slackEnabled, setSlackEnabled] = useState(initial.slackEnabled);
   const isSaving = saveFetcher.state !== "idle";
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const errors = (saveFetcher.data as any)?.errors ?? {};
+  const errors = saveFetcher.data?.errors ?? {};
 
   useEffect(() => {
     if (saveFetcher.data?.message) {
       setSaveMessage(saveFetcher.data.message);
       const timer = setTimeout(() => setSaveMessage(null), 5000);
       return () => clearTimeout(timer);
+    }
+  }, [saveFetcher.data]);
+
+  useEffect(() => {
+    if (saveFetcher.data?.data) {
+      const saved = saveFetcher.data.data;
+      setLocations(saved.locations);
+      setHistoryWindow(saved.historyWindow);
+      setShortageThreshold(saved.shortageThreshold);
+      setOverstockThreshold(saved.overstockThreshold);
+      setMildOverstockThreshold(saved.mildOverstockThreshold);
+      setSafetyDays(saved.safetyDays);
+      setLeadTime(saved.leadTime);
+      setDigestFrequency(saved.digestFrequency);
+      setDigestSendHour(saved.digestSendHour);
+      setDigestDailyEnabled(saved.digestDailyEnabled);
+      setDigestWeeklyEnabled(saved.digestWeeklyEnabled);
+      setEmailRecipients(saved.emailRecipients);
+      setSlackWebhook(saved.slackWebhook);
+      setSlackEnabled(saved.slackEnabled);
     }
   }, [saveFetcher.data]);
 
@@ -123,9 +117,13 @@ export default function Settings() {
       historyWindow,
       shortageThreshold: String(shortageThreshold),
       overstockThreshold: String(overstockThreshold),
+      mildOverstockThreshold: String(mildOverstockThreshold),
       safetyDays: String(safetyDays),
       leadTime: String(leadTime),
       digestFrequency,
+      digestSendHour: String(digestSendHour),
+      digestDailyEnabled: String(digestDailyEnabled),
+      digestWeeklyEnabled: String(digestWeeklyEnabled),
       emailRecipients,
       slackWebhook,
       slackEnabled: String(slackEnabled),
@@ -139,9 +137,13 @@ export default function Settings() {
     setHistoryWindow(initial.historyWindow);
     setShortageThreshold(initial.shortageThreshold);
     setOverstockThreshold(initial.overstockThreshold);
+    setMildOverstockThreshold(initial.mildOverstockThreshold);
     setSafetyDays(initial.safetyDays);
     setLeadTime(initial.leadTime);
     setDigestFrequency(initial.digestFrequency);
+    setDigestSendHour(initial.digestSendHour);
+    setDigestDailyEnabled(initial.digestDailyEnabled);
+    setDigestWeeklyEnabled(initial.digestWeeklyEnabled);
     setEmailRecipients(initial.emailRecipients);
     setSlackWebhook(initial.slackWebhook);
     setSlackEnabled(initial.slackEnabled);
@@ -250,6 +252,19 @@ export default function Settings() {
                 )}
               </label>
               <label className={styles.field}>
+                轻微过量阈值（覆盖天数）
+                <input
+                  className={styles.input}
+                  type="number"
+                  value={mildOverstockThreshold}
+                  aria-invalid={Boolean(errors.mildOverstockThreshold)}
+                  onChange={(event) => setMildOverstockThreshold(Number(event.target.value))}
+                />
+                {errors.mildOverstockThreshold && (
+                  <span className={styles.fieldError}>{errors.mildOverstockThreshold}</span>
+                )}
+              </label>
+              <label className={styles.field}>
                 安全库存天数
                 <input
                   className={styles.input}
@@ -277,7 +292,7 @@ export default function Settings() {
                 计算说明
                 <p className={styles.helpText}>
                   目标库存 = 日均销量 × (交期 + 安全库存)，推荐补货 = max(0, 目标库存 - 当前可售库存)。缺货阈值：覆盖天数 ≤
-                  {shortageThreshold}；过量阈值：覆盖天数 ≥ {overstockThreshold}。
+                  {shortageThreshold}；过量阈值：覆盖天数 ≥ {overstockThreshold}（轻微过量从 {mildOverstockThreshold} 天开始）。
                 </p>
               </div>
             </div>
@@ -305,6 +320,40 @@ export default function Settings() {
                   <option value="weekly">每周一</option>
                   <option value="off">不发送</option>
                 </select>
+                <div className={styles.checkboxGroup}>
+                  <label className={styles.checkboxRow}>
+                    <input
+                      type="checkbox"
+                      checked={digestDailyEnabled}
+                      onChange={() => setDigestDailyEnabled((prev) => !prev)}
+                    />
+                    <span>开启每日 Digest</span>
+                  </label>
+                  <label className={styles.checkboxRow}>
+                    <input
+                      type="checkbox"
+                      checked={digestWeeklyEnabled}
+                      onChange={() => setDigestWeeklyEnabled((prev) => !prev)}
+                    />
+                    <span>开启每周 Digest</span>
+                  </label>
+                </div>
+              </label>
+              <label className={styles.field}>
+                发送时间（整点）
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={digestSendHour}
+                  aria-invalid={Boolean(errors.digestSendHour)}
+                  onChange={(event) => setDigestSendHour(Number(event.target.value))}
+                />
+                {errors.digestSendHour && (
+                  <span className={styles.fieldError}>{errors.digestSendHour}</span>
+                )}
+                <span className={styles.helpText}>本地时区整点，例如 9 = 上午 9:00</span>
               </label>
               <label className={styles.field}>
                 邮件收件人

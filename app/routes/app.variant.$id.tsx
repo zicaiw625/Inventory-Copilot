@@ -3,10 +3,8 @@ import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { authenticate } from "../shopify.server";
-import {
-  getVariantDetail,
-  type VariantDetail,
-} from "../services/inventory.server";
+import { getVariantDetail } from "../services/inventory.digest.server";
+import type { VariantDetail } from "../services/inventory.types";
 import styles from "./app.variant.$id.module.css";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -17,7 +15,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 };
 
 export default function VariantDetailPage() {
-  const detail = useLoaderData<typeof loader>() as VariantDetail;
+  const detail = useLoaderData<typeof loader>();
 
   return (
     <s-page className={styles.page}>

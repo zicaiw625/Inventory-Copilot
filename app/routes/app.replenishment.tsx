@@ -10,17 +10,15 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import {
   getReplenishmentData,
-  logSyncEvent,
-  type ReplenishmentPayload,
-} from "../services/inventory.server";
+} from "../services/inventory.replenishment.server";
+import { logSyncEvent } from "../services/inventory.sync.server";
+import type { ReplenishmentPayload } from "../services/inventory.types";
+import {
+  DEFAULT_TARGET_COVERAGE,
+  MIN_RECOMMENDED_QTY,
+  MIN_SALES_FOR_FORECAST,
+} from "../config/inventory";
 import styles from "./app.replenishment.module.css";
-
-const SHORTAGE_THRESHOLD_DAYS = 10;
-const MIN_SALES_FOR_FORECAST = 10;
-const MIN_RECOMMENDED_QTY = 5;
-const DEFAULT_SAFETY_DAYS = 7;
-const DEFAULT_LEAD_TIME_DAYS = 14;
-const TARGET_COVERAGE_DAYS = Math.max(DEFAULT_SAFETY_DAYS + DEFAULT_LEAD_TIME_DAYS, 30);
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -86,8 +84,8 @@ const formatCurrency = (value: number) =>
 export default function Replenishment() {
   const syncFetcher = useFetcher<typeof action>();
   const planFetcher = useFetcher<typeof action>();
-  const { rows, budgetPlan, missingCostCount, locations, suppliers, safetyDays, leadTimeDays, historyWindowDays, targetCoverageDays } =
-    useLoaderData<typeof loader>() as ReplenishmentPayload;
+  const { rows, budgetPlan, missingCostCount, locations, suppliers, safetyDays, leadTimeDays, historyWindowDays, targetCoverageDays, shortageThreshold } =
+    useLoaderData<typeof loader>();
   const [budget, setBudget] = useState(budgetPlan.budget);
   const [locationFilter, setLocationFilter] = useState(
     locations.find((location) => location.selected)?.id ?? "All",
@@ -128,7 +126,8 @@ export default function Replenishment() {
         row.name.toLowerCase().includes(search.toLowerCase());
       const lowSales = row.avgDailySales * 30 < MIN_SALES_FOR_FORECAST;
       const shortageRisk =
-        row.daysOfStock <= SHORTAGE_THRESHOLD_DAYS || row.recommendedQty >= MIN_RECOMMENDED_QTY;
+        row.daysOfStock <= shortageThreshold ||
+        row.recommendedQty >= MIN_RECOMMENDED_QTY;
       const matchRisk =
         riskFilter === "all"
           ? true
@@ -256,7 +255,6 @@ export default function Replenishment() {
       await navigator.clipboard.writeText(lines.join("\n"));
       setCopyStatus("已复制到剪贴板");
     } catch (error) {
-      console.error("clipboard failed", error);
       setCopyStatus("复制失败，请手动选择文本");
     }
   };
@@ -274,7 +272,7 @@ export default function Replenishment() {
             </p>
             <div className={styles.headerChips}>
               <span className={`${styles.chip} ${styles.chipPrimary}`}>
-                缺货阈值：库存覆盖 ≤ {SHORTAGE_THRESHOLD_DAYS} 天
+                缺货阈值：库存覆盖 ≤ {shortageThreshold} 天
               </span>
               <span className={styles.chip}>安全库存：{safetyDays} 天</span>
               <span className={styles.chip}>默认交期：{leadTimeDays} 天</span>
@@ -307,7 +305,7 @@ export default function Replenishment() {
               <div className={styles.summaryLabel}>待补货 SKU</div>
               <div className={styles.summaryValue}>{rows.filter((row) => row.recommendedQty > 0).length}</div>
               <div className={styles.summaryMeta}>
-                过滤覆盖 ≤ {SHORTAGE_THRESHOLD_DAYS} 天 · 推荐数量 &gt; 0
+                过滤覆盖 ≤ {DEFAULT_SHORTAGE_THRESHOLD_DAYS} 天 · 推荐数量 &gt; 0
               </div>
             </div>
           <div className={styles.summaryCard}>
@@ -327,7 +325,7 @@ export default function Replenishment() {
             <div className={styles.summaryCard}>
               <div className={styles.summaryLabel}>覆盖目标</div>
               <div className={styles.summaryValue}>
-                {targetCoverageDays ?? TARGET_COVERAGE_DAYS} 天
+                {targetCoverageDays ?? DEFAULT_TARGET_COVERAGE} 天
               </div>
               <div className={styles.summaryMeta}>目标 = 交期 + 安全库存</div>
               {syncMessage && <div className={styles.syncNote}>{syncMessage}</div>}

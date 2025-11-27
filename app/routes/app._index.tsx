@@ -7,14 +7,15 @@ import type {
 import { json, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
+import { DEFAULT_SHORTAGE_THRESHOLD_DAYS } from "../config/inventory";
 import { authenticate } from "../shopify.server";
-import {
-  getDashboardData,
-  logSyncEvent,
-  type DashboardRow,
-  type DashboardPayload,
-  type TimeframeKey,
-} from "../services/inventory.server";
+import { getDashboardData } from "../services/inventory.digest.server";
+import { logSyncEvent } from "../services/inventory.sync.server";
+import type {
+  DashboardPayload,
+  DashboardRow,
+  TimeframeKey,
+} from "../services/inventory.types";
 import styles from "./app._index.module.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -44,7 +45,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Dashboard() {
-  const data = useLoaderData<typeof loader>() as DashboardPayload;
+  const data = useLoaderData<typeof loader>();
   const [timeframe, setTimeframe] = useState<TimeframeKey>("30d");
   const [budget, setBudget] = useState<number>(data.budgetPlan.budget);
   const [locationFilter, setLocationFilter] = useState(
@@ -59,6 +60,8 @@ export default function Dashboard() {
     () => buildBudgetPlanFromRows(data.recommendationPool, budget, targetCoverage),
     [budget, data.recommendationPool, targetCoverage],
   );
+  const hasRows =
+    Object.values(data.timeframes ?? {}).find((tf) => tf.rows.length > 0) !== undefined;
 
   const coveragePct = Math.round((liveBudgetPlan.coverageShare ?? 0) * 100);
   const budgetGap = budget - liveBudgetPlan.usedAmount;
@@ -162,6 +165,25 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {!hasRows && (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>还没有库存分析数据</div>
+            <p className={styles.subheading}>
+              首次同步 Shopify 数据后，会生成缺货和压货列表。点击下方按钮开始同步。
+            </p>
+            <s-button
+              variant="primary"
+              onClick={() => syncFetcher.submit({ intent: "sync" }, { method: "post" })}
+              {...(syncFetcher.state !== "idle" ? { loading: true } : {})}
+            >
+              立即同步数据
+            </s-button>
+            {syncFetcher.data?.message && (
+              <div className={styles.heroHint}>{syncFetcher.data.message}</div>
+            )}
+          </div>
+        )}
 
         <div className={styles.toolbar}>
           <div className={styles.timeframe}>
@@ -544,7 +566,7 @@ function buildBudgetPlanFromRows(
         name: row.name,
         qty: row.recommendedQty,
         amount: formatCurrency(spend),
-        risk: row.daysOfStock <= 10 ? "爆款防断货" : "库存紧张",
+        risk: row.daysOfStock <= DEFAULT_SHORTAGE_THRESHOLD_DAYS ? "爆款防断货" : "库存紧张",
       });
     }
   });
