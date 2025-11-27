@@ -30,3 +30,34 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model InventoryMetric {
+  id             String   @id @default(cuid())
+  shopDomain     String
+  variantId      String
+  sku            String
+  name           String
+  variantTitle   String
+  available      Int
+  unitCost       Float?
+  sales30d       Int
+  sales60d       Int
+  sales90d       Int
+  lastCalculated DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([shopDomain, variantId])
+  @@index([shopDomain, lastCalculated])
+}
+
+model SyncLog {
+  id         String   @id @default(cuid())
+  shopDomain String
+  scope      String
+  status     String
+  message    String?
+  createdAt  DateTime @default(now())
+
+  @@index([shopDomain, createdAt])
+}

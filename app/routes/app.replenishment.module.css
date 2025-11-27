@@ -1,0 +1,510 @@
+.page {
+  background: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.12), transparent 32%), #f8fafc;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.subheading {
+  margin: 0.35rem 0 0;
+  color: #475569;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.headerChips {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 940px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.chipPrimary {
+  border-color: #0f766e;
+  background: #ecfdf3;
+  color: #115e59;
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.alertStrip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: #fff7ed;
+  color: #92400e;
+  border: 1px solid #fb923c;
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  box-shadow: 0 6px 18px rgba(145, 90, 18, 0.08);
+}
+
+.summaryCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.25rem;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.06);
+}
+
+.summaryLabel {
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.summaryValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.summaryMeta {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.syncNote {
+  margin-top: 0.35rem;
+  color: #0f766e;
+  font-size: 0.9rem;
+}
+
+.planNote {
+  margin-top: 0.35rem;
+  color: #0ea5e9;
+  font-size: 0.9rem;
+}
+
+.budgetInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #d0d7e2;
+  padding: 0.35rem 0.6rem;
+  border-radius: 10px;
+  width: fit-content;
+  background: #f8fafc;
+}
+
+.currency {
+  color: #475569;
+  font-weight: 600;
+}
+
+.budgetInput {
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  font-weight: 700;
+  width: 120px;
+  outline: none;
+  color: #0f172a;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.filter {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.select {
+  border: 1px solid #d0d7e2;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  min-width: 170px;
+}
+
+.searchInput {
+  border: 1px solid #d0d7e2;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  min-width: 220px;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.tableCard {
+  background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 0.9rem 0.9rem 1.15rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0 0.4rem;
+}
+
+.selectionSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.selectionTitle {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.selectionMeta {
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+.selectionList {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.selectionItem {
+  background: #ecfeff;
+  color: #0f172a;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.9rem;
+}
+
+.tableTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tableSubtitle {
+  font-size: 0.92rem;
+  color: #475569;
+}
+
+.tableActions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chipSoft {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.chipSuccess {
+  background: #ecfdf3;
+  color: #0f5132;
+  border-color: #bbf7d0;
+}
+
+.chipWarning {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.tableWrapper {
+  overflow: auto;
+  margin-top: 0.75rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.6rem 0.4rem;
+  color: #475569;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+  padding: 0.65rem 0.4rem;
+  border-bottom: 1px solid #eef2f7;
+  color: #0f172a;
+  vertical-align: top;
+}
+
+.table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.skeletonRow {
+  opacity: 0.8;
+}
+
+.skeletonLine {
+  height: 10px;
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  animation: shimmer 1.2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.emptyState {
+  text-align: center;
+  padding: 1rem;
+  color: #475569;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.4rem;
+}
+
+.pageSize {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.pageButton {
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #d0d7e2;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.pageButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageMeta {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.productCell {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0f766e 100%);
+  opacity: 0.12;
+}
+
+.productName {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.productMeta {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.sku {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+}
+
+.badgeDanger {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecdd3;
+}
+
+.badgeWarning {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.badgeInfo {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.emphasis {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.note {
+  color: #475569;
+  font-size: 0.9rem;
+  max-width: 200px;
+}
+
+.noteBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #075985;
+  border: 1px solid #bae6fd;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.footerBar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  align-items: center;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+}
+
+.footerStat {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.footerLabel {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+
+.footerValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.dangerText {
+  color: #fecdd3;
+}
+
+.footerActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.copyStatus {
+  grid-column: 1 / -1;
+  color: #0f766e;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+  }
+}
