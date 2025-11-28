@@ -104,7 +104,17 @@ export async function getVariantMetrics(
     return anyCached;
   }
 
-  await logEvent(shopDomain, "sync", "failure", "Fallback to sample metrics");
+  if (process.env.NODE_ENV === "production") {
+    await logEvent(
+      shopDomain,
+      "sync",
+      "failure",
+      "No Shopify data available and cache is empty",
+    );
+    throw new Error("无法从 Shopify 获取库存数据，且没有可用缓存，请稍后重试同步。");
+  }
+
+  await logEvent(shopDomain, "sync", "failure", "Fallback to sample metrics（dev only）");
   return getSampleVariantMetrics();
 }
 
@@ -301,6 +311,24 @@ async function saveVariantMetrics(shopDomain: string, variants: VariantMetrics[]
   );
 }
 
+export async function getInventoryLastUpdated(shopDomain: string): Promise<string> {
+  const latest = await prisma.inventoryMetric.findFirst({
+    where: { shopDomain },
+    select: { lastCalculated: true },
+    orderBy: { lastCalculated: "desc" },
+  });
+
+  if (latest?.lastCalculated) {
+    return `${latest.lastCalculated.toLocaleString()}（缓存 ≤ ${CACHE_MAX_MINUTES} 分钟）`;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "使用样本数据（开发模式）";
+  }
+
+  return "暂无库存数据 · 请先同步";
+}
+
 export async function buildDashboardLocations(admin: AdminApiClient, shopDomain: string) {
   try {
     const locations = await fetchLocations(admin, shopDomain);
@@ -370,4 +398,25 @@ export async function performSync(
     });
     throw error;
   }
+}
+
+export async function getSyncStatus(shopDomain: string): Promise<{
+  lastSuccess?: string;
+  lastFailure?: string;
+}> {
+  const [lastSuccess, lastFailure] = await Promise.all([
+    prisma.syncLog.findFirst({
+      where: { shopDomain, status: "success" },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.syncLog.findFirst({
+      where: { shopDomain, status: "failure" },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return {
+    lastSuccess: lastSuccess?.createdAt?.toLocaleString(),
+    lastFailure: lastFailure?.createdAt?.toLocaleString(),
+  };
 }

@@ -6,7 +6,6 @@ import {
   MIN_DAILY_SALES,
   MIN_RECOMMENDED_QTY,
   MIN_SALES_FOR_FORECAST,
-  DEFAULT_OVERSTOCK_THRESHOLD_DAYS,
 } from "../config/inventory";
 import type {
   BudgetCandidate,
@@ -276,7 +275,6 @@ export function getSampleVariantDetail(): VariantDetail {
     coverage60d: 8,
     coverage90d: 9,
     historicalStockouts: 2,
-    lastReplenished: "5 天前",
     salesHistory: history,
     inventoryHistory: history.map((item) => ({ ...item, quantity: item.quantity + 20 })),
   };

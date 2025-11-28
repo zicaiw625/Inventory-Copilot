@@ -12,7 +12,7 @@ import {
 import prisma from "../db.server";
 import { getSampleVariantMetrics } from "./inventory.helpers.server";
 import { logEvent } from "./logger.server";
-import { fetchLocations, getCachedVariantMetrics } from "./inventory.sync.server";
+import { fetchLocations, getCachedVariantMetrics, getInventoryLastUpdated, getSyncStatus } from "./inventory.sync.server";
 import type { AdminApiClient } from "./shopify-graphql.server";
 import type { SettingsPayload } from "./inventory.types";
 
@@ -60,6 +60,10 @@ export async function getSettingsData(
   }
 
   const saved = shopDomain ? await readSettings(shopDomain) : null;
+  const lastCalculated = shopDomain
+    ? await getInventoryLastUpdated(shopDomain)
+    : "使用样本数据";
+  const syncStatus = shopDomain ? await getSyncStatus(shopDomain) : {};
 
   return {
     locations: withSelection,
@@ -77,9 +81,11 @@ export async function getSettingsData(
     slackWebhook: saved?.slackWebhook ?? "https://hooks.slack.com/...",
     slackEnabled: saved?.slackEnabled ?? true,
     missingCostCount,
-    lastCalculated: saved?.updatedAt?.toLocaleString() ?? "今天 07:45",
+    lastCalculated,
     webhookStatus: "orders/paid · inventory_levels/update · products/update",
-    lastWebhook: "近 5 分钟有 webhook 增量",
+    lastWebhook: syncStatus.lastSuccess
+      ? `最近成功：${syncStatus.lastSuccess}`
+      : "尚无同步记录",
   };
 }
 

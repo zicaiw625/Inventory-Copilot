@@ -5,7 +5,7 @@ import {
 import { computeCoverage, safeDivide, sum } from "./inventory.helpers.server";
 import type { AdminApiClient } from "./shopify-graphql.server";
 import type { OverstockPayload, OverstockRow } from "./inventory.types";
-import { getVariantMetrics } from "./inventory.sync.server";
+import { getInventoryLastUpdated, getVariantMetrics } from "./inventory.sync.server";
 
 type OverstockThresholds = {
   overstockThresholdDays?: number;
@@ -27,7 +27,6 @@ export async function getOverstockData(
       const avgDailySales = safeDivide(sales30d, 30, 0);
       const coverageDays = computeCoverage(variant.available, avgDailySales);
       const stockValue = (variant.unitCost ?? 0) * variant.available;
-      const lastReplenishedDays = Math.max(3, (variant.available % 45) + 5);
       const severity =
         sales30d === 0 || coverageDays >= overstockThreshold
           ? "severe"
@@ -44,8 +43,6 @@ export async function getOverstockData(
         avgDailySales,
         coverageDays,
         stockValue,
-        lastReplenished: `${lastReplenishedDays} 天前`,
-        lastReplenishedDays,
         unitCost: variant.unitCost,
         severity,
       };
@@ -65,5 +62,6 @@ export async function getOverstockData(
     summary,
     overstockThresholdDays: overstockThreshold,
     mildOverstockThresholdDays: mildThreshold,
+    lastCalculated: await getInventoryLastUpdated(shopDomain),
   };
 }

@@ -103,6 +103,7 @@ export type ReplenishmentPayload = {
   shortageThreshold: number;
   historyWindowDays: number;
   targetCoverageDays: number;
+  lastCalculated: string;
 };
 
 export type OverstockRow = {
@@ -114,8 +115,6 @@ export type OverstockRow = {
   avgDailySales: number;
   coverageDays: number;
   stockValue: number;
-  lastReplenished: string;
-  lastReplenishedDays: number;
   unitCost?: number;
   severity: "severe" | "mild" | "normal";
 };
@@ -130,6 +129,7 @@ export type OverstockPayload = {
   };
   overstockThresholdDays: number;
   mildOverstockThresholdDays: number;
+  lastCalculated: string;
 };
 
 export type SettingsPayload = {
@@ -168,7 +168,6 @@ export type VariantDetail = {
   coverage60d: number;
   coverage90d: number;
   historicalStockouts: number;
-  lastReplenished: string;
   salesHistory: { date: string; quantity: number }[];
   inventoryHistory: { date: string; quantity: number }[];
 };

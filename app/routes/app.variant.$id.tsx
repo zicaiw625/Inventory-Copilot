@@ -146,7 +146,7 @@ export default function VariantDetailPage() {
               </li>
               <li>
                 <span className={styles.dot} />
-                最近补货：{detail.lastReplenished}；若成本未填，请在 Settings 补齐以便精准算库存金额。
+                补货时间暂未从 Shopify 读取，后续将基于真实补货事件给出建议；若成本未填，请在 Settings 补齐以便精准算库存金额。
               </li>
             </ul>
           </section>

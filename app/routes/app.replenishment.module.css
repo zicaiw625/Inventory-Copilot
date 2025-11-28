@@ -110,6 +110,11 @@
   color: #64748b;
 }
 
+.summaryHint {
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
 .syncNote {
   margin-top: 0.35rem;
   color: #0f766e;
@@ -435,6 +440,16 @@
 .emphasis {
   font-weight: 800;
   color: #0f172a;
+}
+
+.missingCost {
+  display: inline-flex;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+  font-size: 0.85rem;
 }
 
 .note {

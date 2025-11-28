@@ -6,7 +6,6 @@ import {
   DEFAULT_OVERSTOCK_THRESHOLD_DAYS,
   MIN_RECOMMENDED_QTY,
 } from "../config/inventory";
-import prisma from "../db.server";
 import {
   buildBudgetPlan,
   buildReminders,
@@ -26,7 +25,7 @@ import type {
   TimeframeKey,
   VariantDetail,
 } from "./inventory.types";
-import { buildDashboardLocations, getVariantMetrics } from "./inventory.sync.server";
+import { buildDashboardLocations, getInventoryLastUpdated, getVariantMetrics } from "./inventory.sync.server";
 import { readSettings } from "./inventory.settings.server";
 import type { AdminApiClient } from "./shopify-graphql.server";
 
@@ -86,7 +85,7 @@ export async function getDashboardData(
       lastError: "",
       status: savedSettings?.digestFrequency === "off" ? "warning" : "ok",
     },
-    lastCalculated: await getLastSyncTimestamp(shopDomain),
+    lastCalculated: await getInventoryLastUpdated(shopDomain),
     locations,
     targetCoverages: [targetCoverageDays, targetCoverageDays + 15, targetCoverageDays + 30],
     safetyDays,
@@ -94,19 +93,6 @@ export async function getDashboardData(
     historyWindowDays,
     recommendationPool: rows30d,
   };
-}
-
-async function getLastSyncTimestamp(shopDomain: string) {
-  const last = await prisma.syncLog.findFirst({
-    where: {
-      shopDomain,
-      scope: { in: ["inventory", "sync-replenishment", "sync-overstock"] },
-      status: "success",
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!last) return "暂无同步记录";
-  return new Date(last.createdAt).toLocaleString();
 }
 
 export async function getVariantDetail(
@@ -129,7 +115,6 @@ export async function getVariantDetail(
   const avg90 = safeDivide(match.sales["90d"], 90, 0);
   const coverage60d = computeCoverage(match.available, avg60);
   const coverage90d = computeCoverage(match.available, avg90);
-  const lastReplenished = `${Math.max(3, (match.available % 30) + 2)} 天前`;
 
   return {
     id: match.id,
@@ -149,7 +134,6 @@ export async function getVariantDetail(
     coverage60d,
     coverage90d,
     historicalStockouts: Math.max(0, Math.round(Math.random() * 4)),
-    lastReplenished,
     salesHistory: buildSeriesFromSales(match.sales["30d"]),
     inventoryHistory: buildSeriesFromInventory(match.available),
   };

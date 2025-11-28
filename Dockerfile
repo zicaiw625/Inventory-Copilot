@@ -1,3 +1,4 @@
+# 当前 Dockerfile 未完成，不建议用于生产
 FROM node:20-alpine
 RUN apk add --no-cache openssl
 

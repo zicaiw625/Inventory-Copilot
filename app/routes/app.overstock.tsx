@@ -81,14 +81,12 @@ const discountText = (row: OverstockRow, severeThreshold: number, mildThreshold:
 };
 
 export default function Overstock() {
-  const { rows, summary, overstockThresholdDays, mildOverstockThresholdDays } = useLoaderData<typeof loader>();
+  const { rows, summary, overstockThresholdDays, mildOverstockThresholdDays, lastCalculated } = useLoaderData<typeof loader>();
   const SEVERE_THRESHOLD = overstockThresholdDays ?? DEFAULT_SEVERE;
   const MILD_THRESHOLD = mildOverstockThresholdDays ?? DEFAULT_MILD;
   const syncFetcher = useFetcher<typeof action>();
   const [filter, setFilter] = useState<OverstockRow["severity"] | "all">("severe");
-  const [sortKey, setSortKey] = useState<"coverageDays" | "stockValue" | "lastReplenishedDays">(
-    "stockValue",
-  );
+  const [sortKey, setSortKey] = useState<"coverageDays" | "stockValue">("stockValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
@@ -253,7 +251,6 @@ export default function Overstock() {
             >
               <option value="stockValue">按库存占用金额</option>
               <option value="coverageDays">按覆盖天数</option>
-              <option value="lastReplenishedDays">按最近补货</option>
             </select>
           </label>
           <label className={styles.filter}>
@@ -299,6 +296,7 @@ export default function Overstock() {
             <div>
               <div className={styles.tableTitle}>压货列表</div>
               <div className={styles.tableSubtitle}>覆盖天数 ≥ 60 天 或 30 天销量为 0 的 SKU · 仅读数据</div>
+              <div className={styles.tableMeta}>数据更新于：{lastCalculated}</div>
             </div>
             <span className={`${styles.badge} ${styles.badgeSoft}`}>结果 {visibleRows.length} 条</span>
           </div>
@@ -316,7 +314,6 @@ export default function Overstock() {
                   <th onClick={() => toggleSort("stockValue")} className={styles.sortable}>
                     库存金额 {sortKey === "stockValue" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                   </th>
-                  <th>最近补货</th>
                   <th>建议折扣</th>
                   <th>标签</th>
                 </tr>
@@ -346,7 +343,6 @@ export default function Overstock() {
                         {formatCurrency(row.stockValue)}
                         {!row.unitCost && <span className={styles.missingCost}>未填成本</span>}
                       </td>
-                      <td>{row.lastReplenished}</td>
                       <td>{discountText(row, SEVERE_THRESHOLD, MILD_THRESHOLD)}</td>
                       <td>
                         <span
@@ -366,14 +362,14 @@ export default function Overstock() {
                 {isSyncing &&
                   Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`skeleton-${index}`} className={styles.skeletonRow}>
-                    <td colSpan={9}>
+                    <td colSpan={8}>
                       <div className={styles.skeletonLine} />
                     </td>
                   </tr>
                 ))}
                 {!isSyncing && !hasRows && (
                   <tr>
-                    <td colSpan={9}>
+                    <td colSpan={8}>
                       <div className={styles.emptyState}>没有符合条件的 SKU，调整筛选试试</div>
                     </td>
                   </tr>
@@ -485,7 +481,6 @@ function toCsv(rows: OverstockPayload["rows"]) {
     "日均销量",
     "覆盖天数",
     "库存金额",
-    "最近补货",
     "建议折扣",
     "标签",
   ];
@@ -500,7 +495,6 @@ function toCsv(rows: OverstockPayload["rows"]) {
       row.avgDailySales.toFixed(1),
       row.coverageDays,
       row.stockValue,
-      row.lastReplenished,
       discountText(row, SEVERE_THRESHOLD, MILD_THRESHOLD),
       severityText[row.severity],
     ]

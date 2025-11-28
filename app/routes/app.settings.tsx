@@ -8,6 +8,7 @@ import { json, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { authenticate } from "../shopify.server";
+import { CACHE_MAX_MINUTES } from "../config/inventory";
 import { getSettingsData, saveSettings } from "../services/inventory.settings.server";
 import { logSyncEvent } from "../services/inventory.sync.server";
 import type { SettingsPayload } from "../services/inventory.types";
@@ -160,6 +161,7 @@ export default function Settings() {
               配置参与计算的仓库、阈值、交期和通知渠道。所有设置会在下一次夜间任务和 webhook 增量中生效。
             </p>
             <div className={styles.effectiveHint}>生效时间：夜间任务 + 实时 webhook（约 10 分钟内刷新）</div>
+            <div className={styles.effectiveHint}>同步频率：后台每 {CACHE_MAX_MINUTES} 分钟刷新一次 Shopify 库存/订单，期间可能与实时库存有轻微偏差。</div>
             <div className={styles.effectiveHint}>
               只读 Shopify 数据（read_products / read_inventory / read_orders / read_locations），不会修改库存或创建采购单。
             </div>
@@ -433,6 +435,9 @@ export default function Settings() {
                   <div className={styles.healthMeta}>
                     {initial.lastCalculated} · {initial.lastWebhook}
                   </div>
+                  {initial.lastWebhook?.includes("尚无同步记录") && (
+                    <div className={styles.healthHint}>提示：手动同步一次库存/订单，便于后续显示最新状态</div>
+                  )}
                 </div>
                 <s-button variant="tertiary" size="slim">
                   查看日志

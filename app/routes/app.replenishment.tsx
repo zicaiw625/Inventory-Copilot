@@ -84,7 +84,7 @@ const formatCurrency = (value: number) =>
 export default function Replenishment() {
   const syncFetcher = useFetcher<typeof action>();
   const planFetcher = useFetcher<typeof action>();
-  const { rows, budgetPlan, missingCostCount, locations, suppliers, safetyDays, leadTimeDays, historyWindowDays, targetCoverageDays, shortageThreshold } =
+  const { rows, budgetPlan, missingCostCount, locations, suppliers, safetyDays, leadTimeDays, historyWindowDays, targetCoverageDays, shortageThreshold, lastCalculated } =
     useLoaderData<typeof loader>();
   const [budget, setBudget] = useState(budgetPlan.budget);
   const [locationFilter, setLocationFilter] = useState(
@@ -270,6 +270,7 @@ export default function Replenishment() {
             <p className={styles.subheading}>
               聚焦缺货风险 SKU，按补货目标覆盖天数与供应商交期计算建议数量。预算受限时也能给出优先级。
             </p>
+            <div className={styles.subheading}>数据更新于：{lastCalculated}</div>
             <div className={styles.headerChips}>
               <span className={`${styles.chip} ${styles.chipPrimary}`}>
                 缺货阈值：库存覆盖 ≤ {shortageThreshold} 天
@@ -335,6 +336,13 @@ export default function Replenishment() {
             <div className={styles.summaryLabel}>缺失成本 SKU</div>
             <div className={styles.summaryValue}>{missingCostCount}</div>
             <div className={styles.summaryMeta}>影响库存金额与排序 · 去设置补齐</div>
+            <div className={styles.summaryHint}>
+              {missingCostCount > 0 ? (
+                <s-link href="/app/settings#costs">点击补齐成本，金额排序将更准确</s-link>
+              ) : (
+                "已补齐成本，金额计算准确"
+              )}
+            </div>
           </div>
         </div>
 
@@ -506,6 +514,7 @@ export default function Replenishment() {
 
                     const lowSales = row.avgDailySales * 30 < MIN_SALES_FOR_FORECAST;
                     const note = row.note || (lowSales ? "销量不足以预测" : "");
+                    const hasCost = row.unitCost > 0;
 
                     return (
                       <tr key={row.sku}>
@@ -539,8 +548,16 @@ export default function Replenishment() {
                         </td>
                         <td className={styles.emphasis}>{row.recommendedQty}</td>
                         <td>{row.targetCoverage} 天</td>
-                        <td>{formatCurrency(row.unitCost)}</td>
-                        <td className={styles.emphasis}>{formatCurrency(amount)}</td>
+                        <td>
+                          {hasCost ? (
+                            formatCurrency(row.unitCost)
+                          ) : (
+                            <span className={styles.missingCost}>未填成本</span>
+                          )}
+                        </td>
+                        <td className={styles.emphasis}>
+                          {hasCost ? formatCurrency(amount) : <span className={styles.missingCost}>金额待算</span>}
+                        </td>
                         <td>{row.supplier}</td>
                         <td className={styles.note}>
                           {note ? <span className={styles.noteBadge}>{note}</span> : "-"}

@@ -158,6 +158,12 @@
   color: #475569;
 }
 
+.tableMeta {
+  font-size: 0.88rem;
+  color: #0f172a;
+  margin-top: 0.15rem;
+}
+
 .badgeSoft {
   background: #f8fafc;
   color: #0f172a;

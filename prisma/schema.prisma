@@ -29,6 +29,8 @@ model Session {
   locale        String?
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
+
+  @@index([shop])
 }
 
 model InventoryMetric {
@@ -49,6 +51,7 @@ model InventoryMetric {
 
   @@unique([shopDomain, variantId])
   @@index([shopDomain, lastCalculated])
+  @@index([shopDomain, sku])
 }
 
 model SyncLog {
@@ -60,6 +63,7 @@ model SyncLog {
   createdAt  DateTime @default(now())
 
   @@index([shopDomain, createdAt])
+  @@index([shopDomain, scope, createdAt])
 }
 
 model ShopSetting {
@@ -80,4 +84,6 @@ model ShopSetting {
   slackEnabled              Boolean  @default(false)
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
+
+  @@index([shopDomain])
 }

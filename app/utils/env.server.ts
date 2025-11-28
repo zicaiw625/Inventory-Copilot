@@ -3,7 +3,6 @@ const REQUIRED_ENV_VARS = [
   "SHOPIFY_API_SECRET",
   "SHOPIFY_APP_URL",
   "SCOPES",
-  "DATABASE_URL",
 ];
 
 export function validateEnv() {

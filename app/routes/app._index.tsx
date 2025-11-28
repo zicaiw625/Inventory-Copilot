@@ -97,7 +97,7 @@ export default function Dashboard() {
                 立即同步 Shopify 数据
               </s-button>
               <span className={styles.heroHint}>
-                单店 · 只读 Shopify 数据（不会改库存或创建采购单） · 最近一次计算：{data.lastCalculated} · 90 天历史 + 30 天预测窗口
+                单店 · 只读 Shopify 数据（不会改库存或创建采购单） · 数据更新于：{data.lastCalculated} · 90 天历史 + 30 天预测窗口
                 {syncFetcher.state !== "idle" ? " · 同步中..." : ""}
                 {syncFetcher.data?.message ? ` · ${syncFetcher.data.message}` : ""}
               </span>
@@ -170,7 +170,7 @@ export default function Dashboard() {
           <div className={styles.card}>
             <div className={styles.cardTitle}>还没有库存分析数据</div>
             <p className={styles.subheading}>
-              首次同步 Shopify 数据后，会生成缺货和压货列表。点击下方按钮开始同步。
+              首次同步 Shopify 数据后，会生成缺货和压货列表。建议先累积至少 7 天销量，并在 Settings 补齐成本价以便准确计算库存金额。点击下方按钮开始同步。
             </p>
             <s-button
               variant="primary"
@@ -251,7 +251,12 @@ export default function Dashboard() {
         <div className={styles.kpiGrid}>
           {snapshot.kpis.map((kpi) => (
             <div key={kpi.label} className={styles.kpiCard}>
-              <div className={styles.kpiLabel}>{kpi.label}</div>
+              <div className={styles.kpiLabelRow}>
+                <div className={styles.kpiLabel}>{kpi.label}</div>
+                <span className={styles.kpiInfo} title={kpi.helper} aria-label={kpi.helper}>
+                  i
+                </span>
+              </div>
               <div className={styles.kpiValue}>{kpi.value}</div>
               <div className={`${styles.kpiHelper} ${kpi.tone ? styles[`tone${kpi.tone}`] : ""}`}>{kpi.helper}</div>
             </div>

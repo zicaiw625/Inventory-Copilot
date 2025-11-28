@@ -7,7 +7,7 @@ import {
 import { buildBudgetPlan, buildRowsForTimeframe, parseHistoryWindowDays } from "./inventory.helpers.server";
 import type { AdminApiClient } from "./shopify-graphql.server";
 import type { ReplenishmentPayload, ReplenishmentRow } from "./inventory.types";
-import { buildDashboardLocations, getVariantMetrics } from "./inventory.sync.server";
+import { buildDashboardLocations, getInventoryLastUpdated, getVariantMetrics } from "./inventory.sync.server";
 import { readSettings } from "./inventory.settings.server";
 
 export async function getReplenishmentData(
@@ -78,5 +78,6 @@ export async function getReplenishmentData(
     shortageThreshold,
     historyWindowDays,
     targetCoverageDays: targetCoverage,
+    lastCalculated: await getInventoryLastUpdated(shopDomain),
   };
 }
